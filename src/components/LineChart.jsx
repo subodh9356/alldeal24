@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -11,6 +11,7 @@ import {
   Filler,
 } from "chart.js";
 import { Line } from "react-chartjs-2";
+import { getDatabase, ref, onValue } from "firebase/database";
 
 ChartJS.register(
   CategoryScale,
@@ -25,32 +26,126 @@ ChartJS.register(
 
 const LineChart = () => {
   const [filter, setFilter] = useState("week");
+  const [labels, setLabels] = useState([]);
+  const [dataPoints, setDataPoints] = useState([]);
 
-  // Sample data sets
-  const chartData = {
-    today: {
-      labels: ["12am", "4am", "8am", "12pm", "4pm", "8pm"],
-      data: [2, 4, 3, 5, 6, 4],
-    },
-    week: {
-      labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-      data: [12, 19, 8, 15, 20, 30, 25],
-    },
-    month: {
-      labels: Array.from({ length: 30 }, (_, i) => `Day ${i + 1}`),
-      data: Array.from({ length: 30 }, () => Math.floor(Math.random() * 35) + 5),
-    },
-  };
+  useEffect(() => {
+    const db = getDatabase();
+    const usersRef = ref(db, "Users/");
+    const now = new Date();
 
-  const dataSet = chartData[filter];
-  const totalUsers = dataSet.data.reduce((sum, value) => sum + value, 0);
+    onValue(usersRef, (snapshot) => {
+      const data = snapshot.val();
+      const userDates = [];
+
+      // Collect createdAt timestamps
+      Object.values(data || {}).forEach((user) => {
+        const registrationDate = user.Info?.registrationDate;
+        if (registrationDate) {
+          const [year, month, day] = registrationDate.split("-").map(Number);
+          const dateObj = new Date(year, month - 1, day);
+          userDates.push(dateObj);
+        }
+        
+      });
+
+      let grouped = {};
+
+      if (filter === "today") {
+        grouped = {
+          "12am": 0,
+          "4am": 0,
+          "8am": 0,
+          "12pm": 0,
+          "4pm": 0,
+          "8pm": 0,
+        };
+
+        userDates.forEach((date) => {
+          if (date.toDateString() === now.toDateString()) {
+            const hour = date.getHours();
+            if (hour < 4) grouped["12am"]++;
+            else if (hour < 8) grouped["4am"]++;
+            else if (hour < 12) grouped["8am"]++;
+            else if (hour < 16) grouped["12pm"]++;
+            else if (hour < 20) grouped["4pm"]++;
+            else grouped["8pm"]++;
+          }
+        });
+
+        setLabels(Object.keys(grouped));
+        setDataPoints(Object.values(grouped));
+      }
+
+      else if (filter === "week") {
+        grouped = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 };
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(now.getDate() - 6);
+
+        userDates.forEach((date) => {
+          if (date >= oneWeekAgo) {
+            const day = date.toLocaleDateString("en-US", { weekday: "short" });
+            if (grouped[day] !== undefined) grouped[day]++;
+          }
+        });
+
+        setLabels(Object.keys(grouped));
+        setDataPoints(Object.values(grouped));
+      }
+
+      else if (filter === "month") {
+        grouped = {};
+        for (let i = 1; i <= 30; i++) {
+          grouped[`Day ${i}`] = 0;
+        }
+
+        const oneMonthAgo = new Date();
+        oneMonthAgo.setDate(now.getDate() - 29);
+
+        userDates.forEach((date) => {
+          if (date >= oneMonthAgo) {
+            const dayDiff = Math.floor((date - oneMonthAgo) / (1000 * 60 * 60 * 24));
+            const label = `Day ${dayDiff + 1}`;
+            if (grouped[label] !== undefined) grouped[label]++;
+          }
+        });
+
+        setLabels(Object.keys(grouped));
+        setDataPoints(Object.values(grouped));
+      }
+
+      else if (filter === "lastmonth") {
+        const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+        const daysInLastMonth = lastMonthEnd.getDate();
+
+        grouped = {};
+        for (let i = 1; i <= daysInLastMonth; i++) {
+          grouped[`Day ${i}`] = 0;
+        }
+
+        userDates.forEach((date) => {
+          if (date >= lastMonthDate && date <= lastMonthEnd) {
+            const day = date.getDate();
+            const label = `Day ${day}`;
+            if (grouped[label] !== undefined) grouped[label]++;
+          }
+        });
+
+        setLabels(Object.keys(grouped));
+        setDataPoints(Object.values(grouped));
+      }
+    });
+  }, [filter]);
+
+  const totalUsers = dataPoints.reduce((sum, value) => sum + value, 0);
 
   const data = {
-    labels: dataSet.labels,
+    labels,
     datasets: [
       {
         label: "New Users",
-        data: dataSet.data,
+        data: dataPoints,
         borderColor: "#ffffff",
         backgroundColor: (ctx) => {
           const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 300);
@@ -79,27 +174,22 @@ const LineChart = () => {
       },
       title: {
         display: true,
-        text: `User Statistics - ${filter.charAt(0).toUpperCase() + filter.slice(1)}`,
+        text: `User Statistics - ${
+          filter === "lastmonth" ? "Last Month" : filter.charAt(0).toUpperCase() + filter.slice(1)
+        }`,
         color: "#fff",
-        font: {
-          size: 18,
-          weight: "bold",
-        },
+        font: { size: 18, weight: "bold" },
       },
     },
     scales: {
       x: {
         ticks: { color: "#ccc" },
-        grid: {
-          color: "rgba(255,255,255,0.1)",
-        },
+        grid: { color: "rgba(255,255,255,0.1)" },
       },
       y: {
         beginAtZero: true,
-        ticks: { stepSize: 5, color: "#ccc" },
-        grid: {
-          color: "rgba(255,255,255,0.1)",
-        },
+        ticks: { stepSize: 1, color: "#ccc" },
+        grid: { color: "rgba(255,255,255,0.1)" },
       },
     },
   };
@@ -127,20 +217,24 @@ const LineChart = () => {
         color: "#fff",
       }}
     >
-      {/* Filter buttons */}
       <div style={{ marginBottom: "20px", display: "flex", alignItems: "center", flexWrap: "wrap" }}>
         <button onClick={() => setFilter("today")} style={filterButtonStyle(filter === "today")}>Today</button>
         <button onClick={() => setFilter("week")} style={filterButtonStyle(filter === "week")}>This Week</button>
         <button onClick={() => setFilter("month")} style={filterButtonStyle(filter === "month")}>This Month</button>
+        <button onClick={() => setFilter("lastmonth")} style={filterButtonStyle(filter === "lastmonth")}>Last Month</button>
       </div>
 
-      {/* Total count display */}
       <div style={{ marginBottom: "15px", fontSize: "16px", fontWeight: "500", color: "#fff" }}>
-        Total {filter === "today" ? "Today's" : filter === "week" ? "This Week's" : "This Month's"} Users:{" "}
+        Total {filter === "today"
+          ? "Today's"
+          : filter === "week"
+          ? "This Week's"
+          : filter === "month"
+          ? "This Month's"
+          : "Last Month's"} Users:{" "}
         <span style={{ fontSize: "18px", fontWeight: "700", color: "#ffffff" }}>{totalUsers}</span>
       </div>
 
-      {/* Chart */}
       <Line data={data} options={options} />
     </div>
   );

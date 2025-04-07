@@ -11,6 +11,9 @@ import ManageCars from "./pages/ManageCars";
 import ManageBikes from "./pages/ManageBikes"
 import ManageCommVehicles from "./pages/ManageCommVehicles"
 import ManagePhones from "./pages/ManagePhones";
+import PropertyList from "./pages/PropertyList";
+import LoanServices from "./pages/LoanServices"
+import ServiceDetails from"./pages/ServiceDetails";
 
 
 const App = () => {
@@ -38,6 +41,11 @@ const App = () => {
           <Route path="/manage-bikes" element={<ManageBikes/>} />
           <Route path="/manage-coomercial-vehicles" element={<ManageCommVehicles/>} />
           <Route path="/manage-phones" element={<ManagePhones/>}/>
+          <Route path="/properties/:subcategory" element={<PropertyList />} />
+          <Route path="/loan-services" element={<LoanServices />} />
+          <Route path="/service-details/:id" element={<ServiceDetails />} />
+
+
         </Routes>
       </div>
     </Router>

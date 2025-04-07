@@ -1,80 +1,217 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import LineChart from "../components/LineChart.jsx";
 import { useNavigate } from "react-router-dom";
+import { ref, onValue } from "firebase/database";
+import { database } from "../firebase"; // adjust the path if needed
 import {
     FaUsers,
     FaHome,
     FaCar,
     FaMotorcycle,
     FaTruck,
-    FaTools,
+    FaMobileAlt ,
     FaMoneyCheckAlt,
     FaCogs,
 } from "react-icons/fa";
-
-const cardData = [
-    {
-        title: "Total Users",
-        count: "1,200+",
-        description: "All registered users on the platform",
-        icon: <FaUsers />,
-        bg: "linear-gradient(135deg, #667eea, #764ba2)",
-    },
-    {
-        title: "Properties",
-        count: "350",
-        description: "Listed houses, flats, and plots",
-        icon: <FaHome />,
-        bg: "linear-gradient(135deg, #f7971e, #ffd200)",
-    },
-    {
-        title: "Cars",
-        count: "120",
-        description: "Used and new cars for sale",
-        icon: <FaCar />,
-        bg: "linear-gradient(135deg, #43cea2, #185a9d)",
-    },
-    {
-        title: "Bikes",
-        count: "80",
-        description: "Scooters, sports bikes & more",
-        icon: <FaMotorcycle />,
-        bg: "linear-gradient(135deg, #ff0844, #ffb199)",
-    },
-    {
-        title: "Commercial Vehicles",
-        count: "45",
-        description: "Tempos, trucks and more",
-        icon: <FaTruck />,
-        bg: "linear-gradient(135deg, #00c6ff, #0072ff)",
-    },
-    {
-        title: "Home Services",
-        count: "95",
-        description: "Cleaning, repairs & home care",
-        icon: <FaTools />,
-        bg: "linear-gradient(135deg, #f953c6, #b91d73)",
-    },
-    {
-        title: "Loan Services",
-        count: "60",
-        description: "Home, personal & car loans",
-        icon: <FaMoneyCheckAlt />,
-        bg: "linear-gradient(135deg, #1e3c72, #2a5298)",
-    },
-    {
-        title: "Other Services",
-        count: "150",
-        description: "Tutors, health, events & more",
-        icon: <FaCogs />,
-        bg: "linear-gradient(135deg, #fc466b, #3f5efb)",
-    },
-];
+import PropertyDialog from "../components/PropertyDialog";
 
 
 const Dashboard = () => {
     const [hoveredIndex, setHoveredIndex] = useState(null);
-    const navigate = useNavigate(); // 👈 Navigation hook
+    const navigate = useNavigate();
+    const [userCount, setUserCount] = useState(0);
+    const [showPropertyDialog, setShowPropertyDialog] = useState(false);
+    const [propertyCount, setPropertyCount] = useState(0);
+    const [carCount, setCarCount] = useState(0);
+    const [bikeCount, setBikeCount] = useState(0);
+    const [phoneCount, setPhoneCount] = useState(0);
+    const [commVehicleCount, setCommVehicleCount] = useState(0);
+    const [loanServiceCount, setLoanServiceCount] = useState(0);
+const [otherServiceCount, setOtherServiceCount] = useState(0);
+
+
+    useEffect(() => {
+        const usersRef = ref(database, "Users/");
+        onValue(usersRef, (snapshot) => {
+            const data = snapshot.val();
+            const count = data ? Object.keys(data).length : 0;
+            animateUserCount(count);
+        });
+    }, []);
+
+    const animateUserCount = (finalCount) => {
+        let start = 0;
+        const duration = 1000;
+        const stepTime = Math.abs(Math.floor(duration / finalCount));
+        const counter = setInterval(() => {
+            start += 1;
+            setUserCount(start);
+            if (start >= finalCount) clearInterval(counter);
+        }, stepTime);
+    };
+
+    const propertiesRef = ref(database, "App/FeaturedItems/");
+    useEffect(() => {
+        const propertiesRef = ref(database, "App/FeaturedItems/");
+        onValue(propertiesRef, (snapshot) => {
+            const data = snapshot.val();
+            const count = data ? Object.keys(data).length : 0;
+            animatePropertyCount(count);
+        });
+    }, []);
+
+    const animateCount = (setter, finalCount) => {
+        let start = 0;
+        const duration = 1000;
+        const stepTime = Math.abs(Math.floor(duration / finalCount));
+        const counter = setInterval(() => {
+            start += 1;
+            setter(start);
+            if (start >= finalCount) clearInterval(counter);
+        }, stepTime || 1);
+    };
+    
+    useEffect(() => {
+        // Users count
+        const usersRef = ref(database, "Users/");
+        onValue(usersRef, (snapshot) => {
+            const data = snapshot.val();
+            const count = data ? Object.keys(data).length : 0;
+            animateCount(setUserCount, count);
+        });
+    
+        // Properties count
+        const propertiesRef = ref(database, "App/FeaturedItems/");
+        onValue(propertiesRef, (snapshot) => {
+            const data = snapshot.val();
+            const count = data ? Object.keys(data).length : 0;
+            animateCount(setPropertyCount, count);
+        });
+    
+        // Cars
+        const carsRef = ref(database, "Cars/");
+        onValue(carsRef, (snapshot) => {
+            const data = snapshot.val();
+            const count = data ? Object.keys(data).length : 0;
+            animateCount(setCarCount, count);
+        });
+    
+        // Bikes
+        const bikesRef = ref(database, "Bikes/");
+        onValue(bikesRef, (snapshot) => {
+            const data = snapshot.val();
+            const count = data ? Object.keys(data).length : 0;
+            animateCount(setBikeCount, count);
+        });
+    
+        // Phones
+        const phonesRef = ref(database, "Phones/");
+        onValue(phonesRef, (snapshot) => {
+            const data = snapshot.val();
+            const count = data ? Object.keys(data).length : 0;
+            animateCount(setPhoneCount, count);
+        });
+    
+        // Commercial Vehicles
+        const commRef = ref(database, "CommVehicals/");
+        onValue(commRef, (snapshot) => {
+            const data = snapshot.val();
+            const count = data ? Object.keys(data).length : 0;
+            animateCount(setCommVehicleCount, count);
+        });
+
+        // Loan Services
+const loanRef = ref(database, "App/LoanServices/");
+onValue(loanRef, (snapshot) => {
+    const data = snapshot.val();
+    const count = data ? Object.keys(data).length : 0;
+    animateCount(setLoanServiceCount, count);
+});
+
+// Other Services
+const servicesRef = ref(database, "App/Services/");
+onValue(servicesRef, (snapshot) => {
+    const data = snapshot.val();
+    const count = data ? Object.keys(data).length : 0;
+    animateCount(setOtherServiceCount, count);
+});
+
+    
+    }, []);
+    
+
+    const animatePropertyCount = (finalCount) => {
+        let start = 0;
+        const duration = 1000;
+        const stepTime = Math.abs(Math.floor(duration / finalCount));
+        const counter = setInterval(() => {
+            start += 1;
+            setPropertyCount(start);
+            if (start >= finalCount) clearInterval(counter);
+        }, stepTime || 1); // Prevent 0ms interval
+    };
+
+
+
+    // 🔁 MOVE CARD DATA INSIDE THE COMPONENT HERE
+    const cardData = [
+        {
+            title: "Total Users",
+            count: `${userCount}+`,
+            description: "All registered users on the platform",
+            icon: <FaUsers />,
+            bg: "linear-gradient(135deg, #667eea, #764ba2)",
+        },
+        {
+            title: "Properties",
+            count: `${propertyCount}+`,
+            description: "Listed houses, flats, and plots",
+            icon: <FaHome />,
+            bg: "linear-gradient(135deg, #f7971e, #ffd200)",
+        },
+        {
+            title: "Cars",
+            count: `${carCount}+`,
+            description: "Used and new cars for sale",
+            icon: <FaCar />,
+            bg: "linear-gradient(135deg, #43cea2, #185a9d)",
+        },
+        {
+            title: "Bikes",
+            count: `${bikeCount}+`,
+            description: "Scooters, sports bikes & more",
+            icon: <FaMotorcycle />,
+            bg: "linear-gradient(135deg, #ff0844, #ffb199)",
+        },
+        {
+            title: "Commercial Vehicles",
+            count: `${commVehicleCount}+`,
+            description: "Tempos, trucks and more",
+            icon: <FaTruck />,
+            bg: "linear-gradient(135deg, #00c6ff, #0072ff)",
+        },
+        {
+            title: "Phones",
+            count: `${phoneCount}`,
+            description: "Old and new phones",
+            icon: <FaMobileAlt  />,
+            bg: "linear-gradient(135deg, #f953c6, #b91d73)",
+        },
+        {
+            title: "Loan Services",
+            count: `${loanServiceCount}+`,
+            description: "Home, personal & car loans",
+            icon: <FaMoneyCheckAlt />,
+            bg: "linear-gradient(135deg, #1e3c72, #2a5298)",
+        },
+        {
+            title: "Services",
+            count: `${otherServiceCount}+`,
+            description: "Tutors, health, events & more",
+            icon: <FaCogs />,
+            bg: "linear-gradient(135deg, #fc466b, #3f5efb)",
+        },
+    ];
 
     return (
         <div style={styles.container}>
@@ -94,15 +231,25 @@ const Dashboard = () => {
                         onMouseLeave={() => setHoveredIndex(null)}
                         onClick={() => {
                             if (card.title === "Total Users") {
-                                navigate("/manage-users"); // 👈 Navigate to ManageUsers
+                                navigate("/manage-users");
                             } else if (card.title === "Cars") {
-                                navigate("/manage-cars"); // 👈 Navigate to ManageCars
+                                navigate("/manage-cars");
                             } else if (card.title === "Bikes") {
                                 navigate("/manage-bikes");
                             } else if (card.title === "Commercial Vehicles") {
                                 navigate("/manage-coomercial-vehicles");
+                            } else if (card.title === "Properties") {
+                                setShowPropertyDialog(true);
+                            } else if (card.title === "Loan Services") {
+                                navigate("/loan-services");
+                            } else if (card.title === "Phones") {
+                                navigate("/manage-phones");
+                            } else if (card.title === "Services") {
+                                navigate("/services");
                             }
                         }}
+                        
+
                     >
                         <div style={styles.icon}>{card.icon}</div>
                         <div>
@@ -114,12 +261,18 @@ const Dashboard = () => {
                 ))}
             </div>
 
-
             {/* Line chart section */}
             <LineChart />
+
+            <PropertyDialog
+                open={showPropertyDialog}
+                onClose={() => setShowPropertyDialog(false)}
+            />
+
         </div>
     );
 };
+
 
 const styles = {
     container: {
